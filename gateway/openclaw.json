@@ -1,14 +1,20 @@
 {
-  "$schema": "https://docs.openclaw.ai/schema/openclaw.json",
-
-  "env": "PROD",
-
   "models": {
     "providers": {
-      "openai":    { "apiKey": "${OPENAI_API_KEY}" },
-      "anthropic": { "apiKey": "${ANTHROPIC_API_KEY}" },
-      "google":    { "apiKey": "${GEMINI_API_KEY}" }
+      "google": {
+        "apiKey": "${GEMINI_API_KEY}",
+        "api": "google-generative-ai",
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+        "models": [
+          { "id": "gemini-2.5-flash" },
+          { "id": "gemini-2.5-pro" }
+        ]
+      }
     }
+  },
+
+  "env": {
+    "OPENCLAW_ENV": "PROD"
   },
 
   "tools": {
@@ -19,20 +25,15 @@
       "globalCircuitBreakerThreshold": 30
     },
     "exec": {
-      "applyPatch": { "enabled": true, "workspaceOnly": true },
-      "security": "allowlist",
-      "allowlist": [
-        "gh *", "git *", "go *", "npm *", "node *",
-        "curl https://api.linear.app/*",
-        "curl https://sentry.io/*",
-        "cat *", "grep *", "find *", "ls *", "tree *", "wc *"
-      ]
+      "applyPatch": { "enabled": true }
     },
     "web": {
       "search": { "enabled": true },
       "fetch": { "enabled": true }
     },
-    "elevated": false
+    "elevated": {
+      "enabled": false
+    }
   },
 
   "agents": {
@@ -47,79 +48,70 @@
           "systemPrompt": "Session nearing compaction. Store durable memories now.",
           "prompt": "Write any lasting notes to memory/today.md; reply with NO_REPLY if nothing to store."
         }
-      },
-      "memorySearch": { "provider": "auto" }
+      }
     },
 
     "list": [
       {
         "id": "triage",
-        "workspace": "~/.openclaw/workspace-triage",
-        "model": "gpt-4o-mini",
-        "modelOverrides": { "dev": "gpt-4o-mini" },
-        "identity": { "emoji": "📋" },
+        "default": true,
+        "workspace": "~/.openclaw/workspace",
+        "model": "google/gemini-2.5-flash",
+        "identity": { "name": "Claw", "emoji": "📋", "theme": "task triage and routing" },
         "tools": {
+          "profile": "minimal",
           "allow": ["read", "group:memory", "web_search", "web_fetch"],
           "deny": ["exec", "write", "edit", "apply_patch"]
         },
-        "sandbox": { "mode": "all", "scope": "agent" }
+        "sandbox": { "mode": "off" }
       },
       {
         "id": "coder",
-        "workspace": "~/.openclaw/workspace-coder",
-        "model": "gpt-4o",
-        "modelOverrides": { "dev": "gpt-4o-mini" },
-        "identity": { "emoji": "⚡" },
+        "workspace": "~/.openclaw/workspace",
+        "model": "google/gemini-2.5-pro",
+        "identity": { "name": "Coder", "emoji": "⚡", "theme": "code implementation" },
         "tools": {
+          "profile": "coding",
           "allow": ["group:fs", "group:runtime", "group:memory", "web_fetch"],
           "deny": []
         },
-        "toolOverrides": {
-          "dev": { "allow": ["*"], "deny": [] }
-        },
-        "sandbox": {
-          "mode": "all",
-          "scope": "agent",
-          "docker": {
-            "setupCommand": "apt-get update && apt-get install -y git curl gh golang-go && gh auth login --with-token <<< \"${GITHUB_TOKEN}\""
-          }
-        }
+        "sandbox": { "mode": "off" }
       },
       {
         "id": "debugger",
-        "workspace": "~/.openclaw/workspace-debugger",
-        "model": "gemini-2.5-pro",
-        "modelOverrides": { "dev": "gemini-2.5-flash" },
-        "identity": { "emoji": "🔍" },
+        "workspace": "~/.openclaw/workspace",
+        "model": "google/gemini-2.5-pro",
+        "identity": { "name": "Debugger", "emoji": "🔍", "theme": "debugging and investigation" },
         "tools": {
+          "profile": "coding",
           "allow": ["read", "exec", "group:memory", "web_fetch"],
           "deny": ["write", "edit", "apply_patch"]
         },
-        "sandbox": { "mode": "all", "scope": "agent" }
+        "sandbox": { "mode": "off" }
       },
       {
         "id": "security",
-        "workspace": "~/.openclaw/workspace-security",
-        "model": "gemini-2.5-pro",
-        "modelOverrides": { "dev": "gemini-2.5-flash" },
-        "identity": { "emoji": "🛡️" },
+        "workspace": "~/.openclaw/workspace",
+        "model": "google/gemini-2.5-pro",
+        "identity": { "name": "Security", "emoji": "🛡️", "theme": "security review" },
         "tools": {
+          "profile": "minimal",
           "allow": ["read", "group:memory"],
           "deny": ["exec", "write", "edit", "apply_patch"]
         },
-        "sandbox": { "mode": "all", "scope": "agent" }
+        "sandbox": { "mode": "off" }
       },
       {
         "id": "tester",
-        "workspace": "~/.openclaw/workspace-tester",
-        "model": "gemini-2.5-flash",
-        "modelOverrides": { "dev": "gemini-2.5-flash" },
-        "identity": { "emoji": "🧪" },
+        "workspace": "~/.openclaw/workspace",
+        "model": "google/gemini-2.5-flash",
+        "identity": { "name": "Tester", "emoji": "🧪", "theme": "testing and validation" },
         "tools": {
+          "profile": "coding",
           "allow": ["read", "exec", "group:memory"],
           "deny": ["write", "edit", "apply_patch"]
         },
-        "sandbox": { "mode": "all", "scope": "agent" }
+        "sandbox": { "mode": "off" }
       }
     ]
   },
@@ -129,14 +121,9 @@
       "enabled": true,
       "token": "${DISCORD_BOT_TOKEN}",
 
-      "activity": "Working",
-      "activityType": 4,
-      "status": "online",
-
       "ackReaction": "⚡",
 
       "dmPolicy": "pairing",
-      "groupPolicy": "open",
 
       "guilds": {
         "*": {
@@ -144,10 +131,22 @@
         }
       },
 
+      "actions": {
+        "reactions": true,
+        "messages": true,
+        "threads": true,
+        "pins": true,
+        "search": true,
+        "memberInfo": true,
+        "roleInfo": true,
+        "channelInfo": true,
+        "moderation": false
+      },
+
       "execApprovals": {
         "enabled": true,
         "target": "channel",
-        "sessionFilter": true,
+        "sessionFilter": [],
         "cleanupAfterResolve": true
       },
 
@@ -155,18 +154,6 @@
         "components": {
           "accentColor": "#5865F2"
         }
-      },
-
-      "actions": {
-        "sendMessage": true,
-        "readMessages": true,
-        "editMessage": true,
-        "threadReply": true,
-        "react": true,
-        "deleteMessage": false,
-        "timeout": false,
-        "kick": false,
-        "ban": false
       }
     }
   },
