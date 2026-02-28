@@ -1,0 +1,186 @@
+{
+  "$schema": "https://docs.openclaw.ai/schema/openclaw.json",
+
+  "env": "PROD",
+
+  "models": {
+    "providers": {
+      "openai":    { "apiKey": "${OPENAI_API_KEY}" },
+      "anthropic": { "apiKey": "${ANTHROPIC_API_KEY}" },
+      "google":    { "apiKey": "${GEMINI_API_KEY}" }
+    }
+  },
+
+  "tools": {
+    "loopDetection": {
+      "enabled": true,
+      "warningThreshold": 10,
+      "criticalThreshold": 20,
+      "globalCircuitBreakerThreshold": 30
+    },
+    "exec": {
+      "applyPatch": { "enabled": true, "workspaceOnly": true },
+      "security": "allowlist",
+      "allowlist": [
+        "gh *", "git *", "go *", "npm *", "node *",
+        "curl https://api.linear.app/*",
+        "curl https://sentry.io/*",
+        "cat *", "grep *", "find *", "ls *", "tree *", "wc *"
+      ]
+    },
+    "web": {
+      "search": { "enabled": true },
+      "fetch": { "enabled": true }
+    },
+    "elevated": false
+  },
+
+  "agents": {
+    "defaults": {
+      "workspace": "~/.openclaw/workspace",
+      "heartbeat": { "every": "2h" },
+      "compaction": {
+        "reserveTokensFloor": 20000,
+        "memoryFlush": {
+          "enabled": true,
+          "softThresholdTokens": 4000,
+          "systemPrompt": "Session nearing compaction. Store durable memories now.",
+          "prompt": "Write any lasting notes to memory/today.md; reply with NO_REPLY if nothing to store."
+        }
+      },
+      "memorySearch": { "provider": "auto" }
+    },
+
+    "list": [
+      {
+        "id": "triage",
+        "workspace": "~/.openclaw/workspace-triage",
+        "model": "gpt-4o-mini",
+        "modelOverrides": { "dev": "gpt-4o-mini" },
+        "identity": { "emoji": "📋" },
+        "tools": {
+          "allow": ["read", "group:memory", "web_search", "web_fetch"],
+          "deny": ["exec", "write", "edit", "apply_patch"]
+        },
+        "sandbox": { "mode": "all", "scope": "agent" }
+      },
+      {
+        "id": "coder",
+        "workspace": "~/.openclaw/workspace-coder",
+        "model": "gpt-4o",
+        "modelOverrides": { "dev": "gpt-4o-mini" },
+        "identity": { "emoji": "⚡" },
+        "tools": {
+          "allow": ["group:fs", "group:runtime", "group:memory", "web_fetch"],
+          "deny": []
+        },
+        "toolOverrides": {
+          "dev": { "allow": ["*"], "deny": [] }
+        },
+        "sandbox": {
+          "mode": "all",
+          "scope": "agent",
+          "docker": {
+            "setupCommand": "apt-get update && apt-get install -y git curl gh golang-go && gh auth login --with-token <<< \"${GITHUB_TOKEN}\""
+          }
+        }
+      },
+      {
+        "id": "debugger",
+        "workspace": "~/.openclaw/workspace-debugger",
+        "model": "gemini-2.5-pro",
+        "modelOverrides": { "dev": "gemini-2.5-flash" },
+        "identity": { "emoji": "🔍" },
+        "tools": {
+          "allow": ["read", "exec", "group:memory", "web_fetch"],
+          "deny": ["write", "edit", "apply_patch"]
+        },
+        "sandbox": { "mode": "all", "scope": "agent" }
+      },
+      {
+        "id": "security",
+        "workspace": "~/.openclaw/workspace-security",
+        "model": "gemini-2.5-pro",
+        "modelOverrides": { "dev": "gemini-2.5-flash" },
+        "identity": { "emoji": "🛡️" },
+        "tools": {
+          "allow": ["read", "group:memory"],
+          "deny": ["exec", "write", "edit", "apply_patch"]
+        },
+        "sandbox": { "mode": "all", "scope": "agent" }
+      },
+      {
+        "id": "tester",
+        "workspace": "~/.openclaw/workspace-tester",
+        "model": "gemini-2.5-flash",
+        "modelOverrides": { "dev": "gemini-2.5-flash" },
+        "identity": { "emoji": "🧪" },
+        "tools": {
+          "allow": ["read", "exec", "group:memory"],
+          "deny": ["write", "edit", "apply_patch"]
+        },
+        "sandbox": { "mode": "all", "scope": "agent" }
+      }
+    ]
+  },
+
+  "channels": {
+    "discord": {
+      "enabled": true,
+      "token": "${DISCORD_BOT_TOKEN}",
+
+      "activity": "Working",
+      "activityType": 4,
+      "status": "online",
+
+      "ackReaction": "⚡",
+
+      "dmPolicy": "pairing",
+      "groupPolicy": "open",
+
+      "guilds": {
+        "*": {
+          "requireMention": true
+        }
+      },
+
+      "execApprovals": {
+        "enabled": true,
+        "target": "channel",
+        "sessionFilter": true,
+        "cleanupAfterResolve": true
+      },
+
+      "ui": {
+        "components": {
+          "accentColor": "#5865F2"
+        }
+      },
+
+      "actions": {
+        "sendMessage": true,
+        "readMessages": true,
+        "editMessage": true,
+        "threadReply": true,
+        "react": true,
+        "deleteMessage": false,
+        "timeout": false,
+        "kick": false,
+        "ban": false
+      }
+    }
+  },
+
+  "bindings": [
+    {
+      "agentId": "triage",
+      "match": { "channel": "discord" }
+    }
+  ],
+
+  "messages": {
+    "groupChat": {
+      "mentionPatterns": ["@claw", "@openclaw", "@bot"]
+    }
+  }
+}

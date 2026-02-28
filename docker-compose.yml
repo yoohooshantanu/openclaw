@@ -1,0 +1,43 @@
+# ══════════════════════════════════════════════════════════
+# Docker Compose — OpenClaw Bot Employee (Self-Hosted)
+# ══════════════════════════════════════════════════════════
+# Usage:
+#   cp .env.example .env && nano .env
+#   docker compose up -d
+#   docker compose logs -f openclaw
+
+services:
+  openclaw:
+    image: node:20-slim
+    container_name: openclaw-bot
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - openclaw-data:/root/.openclaw
+      - ./gateway/openclaw.json:/root/.openclaw/openclaw.json:ro
+      - ./workspace:/root/.openclaw/workspace:ro
+      - ./skills:/root/.openclaw/skills:ro
+    ports:
+      - "3000:3000"   # Dashboard / WebChat
+    entrypoint: /bin/bash
+    command: >
+      -c "
+        npm install -g openclaw@latest gh &&
+        echo \"$$GITHUB_TOKEN\" | gh auth login --with-token 2>/dev/null || true &&
+        chmod +x /root/.openclaw/skills/**/*.sh 2>/dev/null || true &&
+        openclaw gateway
+      "
+    healthcheck:
+      test: ["CMD", "openclaw", "health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+
+volumes:
+  openclaw-data:
+    driver: local
