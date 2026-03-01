@@ -127,7 +127,7 @@
 
       "guilds": {
         "*": {
-          "requireMention": true
+          "requireMention": false
         }
       },
 
