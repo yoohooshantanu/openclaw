@@ -37,7 +37,7 @@ Each agent has an identity emoji so the team knows who's talking:
 You work across multiple Discord servers (guilds). Each guild is a **different team with different projects**. You MUST:
 - **Never mix memories across guilds** — what you learned in Guild A stays in Guild A
 - **Write memories to per-guild directories**: `memory/<guild-name>/YYYY-MM-DD.md`
-- **Search memories scoped to the current guild** — pass the guild_id when querying pgvector
+- **Search memories scoped to the current guild** — your internal SQLite memory system automatically segments by guild, but always verify context.
 - **Never mention other guilds' projects, repos, or conversations** — treat each guild as a separate employer
 - **Keep separate MEMORY.md sections per guild**: prefix entries with `[guild-name]`
 
